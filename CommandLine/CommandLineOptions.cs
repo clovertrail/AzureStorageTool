@@ -7,8 +7,9 @@ namespace AzureStorageTable
 {
     [HelpOption("--help")]
     [Subcommand(
-        typeof(ProdCommandOptions),
+        typeof(ProdDeleteCommandOptions),
         typeof(ProdLoadTestCommandOptions),
+        typeof(ProdQueryCommandOptions),
         typeof(StagingDeleteCommandOptions),
         typeof(StagingQueryCommandOptions))]
     internal class CommandLineOptions : BaseOption

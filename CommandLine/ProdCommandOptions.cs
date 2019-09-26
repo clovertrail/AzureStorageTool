@@ -51,6 +51,27 @@ namespace AzureStorageTable
         }
     }
 
+    [Command(Name = "prod-query-tbl", FullName = "query for production storage table", Description = "Command options for production environment")]
+    internal class ProdQueryCommandOptions : ProdCommandOptions
+    {
+        protected override async Task OnExecuteAsync(CommandLineApplication app)
+        {
+            var keyvaultAddress = $"https://{KeyVaultName}.vault.azure.net/";
+            var azureHelper = new AzureHelper(TenantId);
+
+            var storageAccount = CloudStorageAccount.Parse(
+                azureHelper.GetSecretValue(
+                    keyvaultAddress, "StorageAccountConnectionString").GetAwaiter().GetResult());
+            var tableClient = storageAccount.CreateCloudTableClient();
+            var monitorTable = Helper.GenMonitorTable(TableName, tableClient);
+            var stopWatch = new Stopwatch();
+            stopWatch.Start();
+            var entries = await monitorTable.GetBasedTimestamp(DaysBeforeNow);
+            stopWatch.Stop();
+            Console.WriteLine($"Get {entries.Count} entries takes {stopWatch.ElapsedMilliseconds} milli-seconds");
+        }
+    }
+
     internal class ProdCommandOptions : BaseOption
     {
         [Option("-t|--tenantId", Description = "Specify the tenant ID. Default is '33e01921-4d64-4f8c-a055-5bdaffd5e33d'")]
