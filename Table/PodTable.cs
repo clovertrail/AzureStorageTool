@@ -3,9 +3,9 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace AzSignalR.Monitor.Storage.Tables
 {
-    public class ServiceTable : BaseMonitorTable<TableEntity>
+    public class PodTable : BaseMonitorTable<TableEntity>
     {
-        public ServiceTable(CloudTableClient storageTableClient, string tableName = "services") :
+        public PodTable(CloudTableClient storageTableClient, string tableName = "pods") :
             base(tableName, storageTableClient)
         { }
     }

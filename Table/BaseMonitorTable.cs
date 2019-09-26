@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 
 namespace AzSignalR.Monitor.Storage.Tables
 {
-    public abstract class BaseMonitorTable<TEntity> : BaseTable where TEntity : TableEntity, new()
+    public class BaseMonitorTable<TEntity> : BaseTable where TEntity : TableEntity, new()
     {
         protected BaseMonitorTable(string tableName, CloudTableClient storageTableClient) :
             base(tableName, storageTableClient)
         { }
 
-        public async Task<List<TEntity>> GetFromVersion(string version)
+        public async Task<List<TEntity>> GetFromParitionKey(string version)
         {
             var query = new TableQuery<TEntity>().Where(
                     TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, version));
@@ -20,14 +20,19 @@ namespace AzSignalR.Monitor.Storage.Tables
             return results;
         }
 
-        public async Task<List<TEntity>> GetBasedTimestamp(DateTimeOffset dateTimeOffset)
+        public async Task<List<TEntity>> ExecuteQuerySegmentedAsync(
+            TableQuery<TEntity> query, TableContinuationToken continuationToken, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return await ExecuteSegmentedQueryAsync(query);
+        }
+
+        public async Task<List<TEntity>> GetBasedTimestamp(int daysBefore)
         {
             var query = new TableQuery<TEntity>().Where(
-                    TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThan, dateTimeOffset));
+                    TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThan, DateTimeOffset.Now.AddDays(-daysBefore).Date));
             var results = await ExecuteSegmentedQueryAndGetAllResultsAsync(query);
             return results;
         }
-
 
         public async Task<int> DeleteOldEntities(int daysBefore)
         {

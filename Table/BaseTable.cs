@@ -19,6 +19,16 @@ namespace AzSignalR.Monitor.Storage.Tables
             Table.CreateIfNotExistsAsync();
         }
 
+        protected async Task<List<TEntity>> ExecuteSegmentedQueryAsync<TEntity>(TableQuery<TEntity> query)
+            where TEntity : TableEntity, new()
+        {
+            var results = new List<TEntity>();
+            TableContinuationToken continuationToken = null;
+            var queryResults = await Table.ExecuteQuerySegmentedAsync(query, continuationToken);
+            results.AddRange(queryResults.Results);
+            return results;
+        }
+
         protected async Task<List<TEntity>> ExecuteSegmentedQueryAndGetAllResultsAsync<TEntity>(TableQuery<TEntity> query)
             where TEntity : TableEntity, new()
         {
@@ -36,7 +46,7 @@ namespace AzSignalR.Monitor.Storage.Tables
         protected async Task<int> ExecuteBatchDeleteAsync<TEntity>(TableQuery<TEntity> query)
             where TEntity : TableEntity, new()
         {
-            int deleted = 0, r = 0;
+            int deleted = 0, r = 0, pos = 0;
             TableContinuationToken continuationToken = null;
             do
             {
@@ -46,22 +56,50 @@ namespace AzSignalR.Monitor.Storage.Tables
                                          group entity by entity.PartitionKey into newEntity
                                          orderby newEntity.Key
                                          select newEntity;
-                foreach (var entities in aggregatedEntities)
+                if (aggregatedEntities.Count() > 0)
                 {
-                    var tableBatchOperation = new TableBatchOperation();
-                    foreach (var entity in entities)
-                    {
-                        tableBatchOperation.Add(TableOperation.Delete(entity));
+                    foreach (var entities in aggregatedEntities)
+                    {   
+                        if (entities.Count() < TableConstants.TableServiceBatchMaximumOperations)
+                        {
+                            var tableBatchOperation = new TableBatchOperation();
+                            foreach (var entity in entities)
+                            {
+                                tableBatchOperation.Add(TableOperation.Delete(entity));
+                            }
+                            Console.WriteLine($"Patch delete for {tableBatchOperation.Count}");
+                            var result = await Table.ExecuteBatchAsync(tableBatchOperation);
+                            for (int i = 0; i < result.Count; i++)
+                            {
+                                deleted += (result[i].HttpStatusCode == 204 ? 1 : 0);
+                            }
+                        }
+                        else
+                        {
+                            var entityList = entities.ToList();
+                            do
+                            {
+                                int i;
+                                var tableBatchOperation = new TableBatchOperation();
+                                for (i = pos; i < pos + TableConstants.TableServiceBatchMaximumOperations && i < entityList.Count; i++)
+                                {
+                                    tableBatchOperation.Add(TableOperation.Delete(entityList[i]));
+                                }
+                                pos = i;
+                                Console.WriteLine($"Patch delete for {tableBatchOperation.Count}");
+                                var result = await Table.ExecuteBatchAsync(tableBatchOperation);
+                                for (i = 0; i < result.Count; i++)
+                                {
+                                    deleted += (result[i].HttpStatusCode == 204 ? 1 : 0);
+                                }
+                            } while (pos < entities.Count());
+                            pos = 0;
+                        }
+                        
+                        Console.WriteLine($"Deleted {deleted} entries");
                     }
-                    Console.WriteLine($"Patch delete for {tableBatchOperation.Count}");
-                    var result = await Table.ExecuteBatchAsync(tableBatchOperation);
-                    for (int i = 0; i < result.Count; i++)
-                    {
-                        deleted += (result[i].HttpStatusCode == 204 ? 1 : 0);
-                    }
-                    Console.WriteLine($"Deleted {deleted} entries");
+                    Console.WriteLine($"Finish {r} round of batch delete");
                 }
-                Console.WriteLine($"Finish {r} round of batch delete");
                 r++;
             } while (continuationToken != null);
             return deleted;
