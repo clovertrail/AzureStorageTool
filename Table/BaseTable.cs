@@ -19,6 +19,34 @@ namespace AzSignalR.Monitor.Storage.Tables
             Table.CreateIfNotExistsAsync();
         }
 
+        protected async Task<TEntity> ExecuteSearchEntity<TEntity>(
+            TableQuery<TEntity> query,
+            Func<TEntity, bool> filter)
+            where TEntity : TableEntity, new()
+        {
+            bool found = false;
+            TEntity entity = default(TEntity);
+            TableContinuationToken continuationToken = null;
+            do
+            {
+                var queryResults = await Table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                if (filter != null)
+                {
+                    foreach (var en in queryResults)
+                    {
+                        if (filter(en))
+                        {
+                            entity = en;
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                continuationToken = queryResults.ContinuationToken;
+            } while (continuationToken != null && !found);
+            return entity;
+        }
+
         protected async Task<List<TEntity>> ExecuteSegmentedQueryAsync<TEntity>(TableQuery<TEntity> query)
             where TEntity : TableEntity, new()
         {

@@ -20,6 +20,13 @@ namespace AzSignalR.Monitor.Storage.Tables
             return results;
         }
 
+        public async Task<TEntity> SearchEntity(
+            Func<TEntity, bool> filter)
+        {
+            var query = new TableQuery<TEntity>();
+            return await ExecuteSearchEntity(query, filter);
+        }
+
         public async Task<List<TEntity>> ExecuteQuerySegmentedAsync(
             TableQuery<TEntity> query, TableContinuationToken continuationToken, CancellationToken cancellationToken = default(CancellationToken))
         {

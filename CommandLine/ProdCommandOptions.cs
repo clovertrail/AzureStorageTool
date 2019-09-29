@@ -1,4 +1,5 @@
 ﻿using AzSignalR.Monitor;
+using AzSignalR.Monitor.Storage;
 using AzSignalR.Monitor.Storage.Tables;
 using AzureStorageTable.CommandLine;
 using McMaster.Extensions.CommandLineUtils;
@@ -32,7 +33,31 @@ namespace AzureStorageTable
         }
     }
 
-    [Command(Name = "prod-load-test", FullName = "load test for the production", Description = "Command options for production environment")]
+    [Command(Name = "prod-query-resource", FullName = "Query SignalR resource for the production", Description = "Query SignalR resource of production environment")]
+    internal class SearchResourceCommandOptions : ProdCommandOptions
+    {
+        [Option("-s|--SubscriptionId", Description = "Specify the subscription ID of the SignalR resource")]
+        public string SubscriptionId { get; set; }
+
+        [Option("-r|--ResourceName", Description = "Specify the SignalR resource name")]
+        public string ResourceName { get; set; }
+
+        protected override async Task OnExecuteAsync(CommandLineApplication app)
+        {
+            if (string.IsNullOrEmpty(SubscriptionId) || string.IsNullOrEmpty(ResourceName))
+            {
+                ReportError(new ArgumentException("Missing subscriptionId or resource name"));
+            }
+            var keyvaultAddress = $"https://{KeyVaultName}.vault.azure.net/";
+            var azureHelper = new AzureHelper(TenantId);
+            var strAccountProvider = new StorageAccountProvider(azureHelper, keyvaultAddress);
+            var storageAccount = await strAccountProvider.GetRPTableReader(SignalRConstants.SignalRInstanceStorageAccount);
+            var signalrInstanceTbl = new SignalRInstanceTable(SignalRConstants.SignalRInstanceTableName, storageAccount.CreateCloudTableClient());
+            await Helper.SearchEntity(signalrInstanceTbl, SubscriptionId, ResourceName);
+        }
+    }
+
+    [Command(Name = "prod-load-test", FullName = "load test for the production", Description = "Load test for production environment")]
     internal class ProdLoadTestCommandOptions : ProdCommandOptions
     {
         protected override async Task OnExecuteAsync(CommandLineApplication app)
@@ -51,7 +76,7 @@ namespace AzureStorageTable
         }
     }
 
-    [Command(Name = "prod-query-tbl", FullName = "query for production storage table", Description = "Command options for production environment")]
+    [Command(Name = "prod-query-tbl", FullName = "query for production storage table", Description = "Perf test for querying in production environment")]
     internal class ProdQueryCommandOptions : ProdCommandOptions
     {
         protected override async Task OnExecuteAsync(CommandLineApplication app)

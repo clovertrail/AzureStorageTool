@@ -1,4 +1,6 @@
-﻿using AzSignalR.Monitor.Storage.Tables;
+﻿using AzSignalR.Monitor.Storage;
+using AzSignalR.Monitor.Storage.Entities;
+using AzSignalR.Monitor.Storage.Tables;
 using AzureStorageTable.CommandLine;
 using McMaster.Extensions.CommandLineUtils;
 using System;
@@ -35,19 +37,39 @@ namespace AzureStorageTable
         }
     }
 
-    [Command(Name = "staging-query-tbl", FullName = "query for staging storage table", Description = "Command options for staging environment")]
+    [Command(Name = "staging-query-tbl", FullName = "query for staging storage table", Description = "Perf check for batch query of staging environment")]
     internal class StagingQueryCommandOptions : StagingCommandOptions
     {
         protected override async Task OnExecuteAsync(CommandLineApplication app)
         {
             ValidateParameters();
-            var storageAccount = AzureStorageAccount.CreateStorageAccountFromConnectionString(ConnectionString);
             var monitorTable = Helper.GenMonitorTable(TableName, AzureStorageAccount.GetStorageTable(ConnectionString));
             var stopWatch = new Stopwatch();
             stopWatch.Start();
             var entries = await monitorTable.GetBasedTimestamp(DaysBeforeNow);
             stopWatch.Stop();
             Console.WriteLine($"Get {entries.Count} entries takes {stopWatch.ElapsedMilliseconds} milli-seconds");
+        }
+    }
+
+    [Command(Name = "staging-query-resource", FullName = "query a SignalR resource for staging storage table", Description = "Query SignalR resource of staging environment")]
+    internal class StagingResourceQueryCommandOptions : StagingCommandOptions
+    {
+        [Option("-s|--SubscriptionId", Description = "Specify the subscription ID of the SignalR resource")]
+        public string SubscriptionId { get; set; }
+
+        [Option("-r|--ResourceName", Description = "Specify the SignalR resource name")]
+        public string ResourceName { get; set; }
+
+        protected override async Task OnExecuteAsync(CommandLineApplication app)
+        {
+            ValidateParameters();
+            if (string.IsNullOrEmpty(SubscriptionId) || string.IsNullOrEmpty(ResourceName))
+            {
+                ReportError(new ArgumentException("Missing subscriptionId or resource name"));
+            }
+            var signalrInstanceTbl = new SignalRInstanceTable(SignalRConstants.SignalRInstanceTableName, AzureStorageAccount.GetStorageTable(ConnectionString));
+            await Helper.SearchEntity(signalrInstanceTbl, SubscriptionId, ResourceName);
         }
     }
 

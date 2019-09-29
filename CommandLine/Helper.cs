@@ -41,6 +41,27 @@ namespace AzureStorageTable.CommandLine
             Console.WriteLine($"query {models.Count} takes {stopWatch.ElapsedMilliseconds} milli-seconds");
         }
 
+        public static async Task SearchEntity(SignalRInstanceTable signalrInstanceTbl, string subscriptionId, string resourceName)
+        {
+            var entity = await signalrInstanceTbl.SearchEntity(t =>
+            {
+                var signalrEntity = t;
+                if (string.Equals(signalrEntity.UserSubscriptionId, subscriptionId) && string.Equals(signalrEntity.ResourceName, resourceName))
+                {
+                    return true;
+                }
+                return false;
+            });
+            if (entity != null)
+            {
+                var signalrEntity = entity;
+                Console.WriteLine($"{signalrEntity.ResourceName}: status: {signalrEntity.Status}, isStopped: {signalrEntity.IsStopped}, isSuspended: {signalrEntity.IsSuspended}");
+            }
+            else
+            {
+                Console.WriteLine($"{resourceName} does not exist");
+            }
+        }
         public static BaseMonitorTable<TableEntity> GenMonitorTable(string table, CloudTableClient cloudTableClient)
         {
             switch (table)

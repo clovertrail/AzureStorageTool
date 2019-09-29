@@ -10,8 +10,10 @@ namespace AzureStorageTable
         typeof(ProdDeleteCommandOptions),
         typeof(ProdLoadTestCommandOptions),
         typeof(ProdQueryCommandOptions),
+        typeof(SearchResourceCommandOptions),
         typeof(StagingDeleteCommandOptions),
-        typeof(StagingQueryCommandOptions))]
+        typeof(StagingQueryCommandOptions),
+        typeof(StagingResourceQueryCommandOptions))]
     internal class CommandLineOptions : BaseOption
     {
         public string GetVersion()
