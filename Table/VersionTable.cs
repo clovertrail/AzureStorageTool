@@ -14,7 +14,7 @@ namespace AzSignalR.Monitor.Storage.Tables
             var query = new TableQuery<TableEntity>()
                 .Where(TableQuery.GenerateFilterCondition(TableConstants.PartitionKey, QueryComparisons.Equal, resourceType.ToString()))
                 .Take(1);
-            var queryResults = await ExecuteQuerySegmentedAsync(query, null as TableContinuationToken);
+            var queryResults = await ExecuteQueryAsync(query);
             return queryResults.FirstOrDefault();
         }
     }

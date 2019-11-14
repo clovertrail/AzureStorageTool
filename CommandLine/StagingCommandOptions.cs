@@ -1,14 +1,28 @@
 ﻿using AzSignalR.Monitor.Storage;
-using AzSignalR.Monitor.Storage.Entities;
 using AzSignalR.Monitor.Storage.Tables;
 using AzureStorageTable.CommandLine;
 using McMaster.Extensions.CommandLineUtils;
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AzureStorageTable
 {
+    [Command(Name = "get-staging-names", FullName = "get all names", Description = "Get all names")]
+    internal class GetAllNamesCommandOptions : StagingCommandOptions
+    {
+        protected override async Task OnExecuteAsync(CommandLineApplication app)
+        {
+            ValidateParameters();
+            var nameTable = new NameTable(AzureStorageAccount.GetStorageTable(ConnectionString));
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var entities = await nameTable.GetPeroidAsync(DaysBeforeNow, DaysAfterNow, cts.Token);
+            DumpTypedEntities(entities, ResourceType.SignalR);
+            DumpTypedEntities(entities, ResourceType.Deployment);
+        }
+    }
+
     [Command(Name = "clear-staging-tbl", FullName = "clear staging storage table", Description = "Command options for staging environment")]
     internal class StagingCommandOptions : BaseOption
     {

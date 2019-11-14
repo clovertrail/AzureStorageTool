@@ -1,3 +1,4 @@
+using AzSignalR.Monitor.Storage.Entities;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Collections.Generic;
@@ -27,8 +28,7 @@ namespace AzSignalR.Monitor.Storage.Tables
             return await ExecuteSearchEntity(query, filter);
         }
 
-        public async Task<List<TEntity>> ExecuteQuerySegmentedAsync(
-            TableQuery<TEntity> query, TableContinuationToken continuationToken, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<List<TEntity>> ExecuteQueryAsync(TableQuery<TEntity> query)
         {
             return await ExecuteSegmentedQueryAsync(query);
         }

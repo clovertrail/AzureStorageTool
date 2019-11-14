@@ -1,5 +1,9 @@
-﻿using McMaster.Extensions.CommandLineUtils;
+﻿using AzSignalR.Monitor.Storage;
+using AzSignalR.Monitor.Storage.Entities;
+using McMaster.Extensions.CommandLineUtils;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -13,7 +17,9 @@ namespace AzureStorageTable
         typeof(SearchResourceCommandOptions),
         typeof(StagingDeleteCommandOptions),
         typeof(StagingQueryCommandOptions),
-        typeof(StagingResourceQueryCommandOptions))]
+        typeof(StagingResourceQueryCommandOptions),
+        typeof(GetAllNamesCommandOptions),
+        typeof(GetProdAllNamesCommandOptions))]
     internal class CommandLineOptions : BaseOption
     {
         public string GetVersion()
@@ -41,10 +47,29 @@ namespace AzureStorageTable
             Console.ResetColor();
         }
 
-        [Option("-d|--daysBeforeNow", Description = "Specify from how many days before now. Default is 30 (days)")]
+        [Option("-b|--onOrBefore", Description = "Specify from how many days before (@today - value). Default value is 30 (days)")]
         public int DaysBeforeNow { get; set; } = 30;
+
+        [Option("-a|--onOrAfter", Description = "Specify from how many days after (@today - value). Default value is 40 (days)")]
+        public int DaysAfterNow { get; set; } = 40;
 
         [Option("-n|--tableName", Description = "Specify the table name: 'deployments', 'jobstatus', 'meta', 'nameindexes', 'names', 'pods', 'respack', 'services', 'versions', 'virtualmachines', Default is 'services'")]
         public string TableName { get; set; } = "services";
+
+        // Utilities
+        protected void DumpTypedEntities(IEnumerable<NameEntity> entities, ResourceType rt)
+        {
+            var selectedEntities = entities.Where(t => t.Type == rt);
+            DumpEntities(rt.ToString(), selectedEntities);
+        }
+
+        protected void DumpEntities(string entityType, IEnumerable<NameEntity> entities)
+        {
+            Console.WriteLine($"======{entityType}");
+            foreach (var entity in entities)
+            {
+                Console.WriteLine($"{entity.EffectiveTime} {entity.NameRegion} {entity.RowKey}");
+            }
+        }
     }
 }

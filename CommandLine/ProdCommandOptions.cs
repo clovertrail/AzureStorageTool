@@ -4,13 +4,34 @@ using AzSignalR.Monitor.Storage.Tables;
 using AzureStorageTable.CommandLine;
 using McMaster.Extensions.CommandLineUtils;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AzureStorageTable
 {
+    [Command(Name = "get-prod-names", FullName = "get all names", Description = "Get all names")]
+    internal class GetProdAllNamesCommandOptions : ProdCommandOptions
+    {
+        protected override async Task OnExecuteAsync(CommandLineApplication app)
+        {
+            var keyvaultAddress = $"https://{KeyVaultName}.vault.azure.net/";
+            var azureHelper = new AzureHelper(TenantId);
+
+            var storageAccount = CloudStorageAccount.Parse(
+                azureHelper.GetSecretValue(
+                    keyvaultAddress, "StorageAccountConnectionString").GetAwaiter().GetResult());
+            var tableClient = storageAccount.CreateCloudTableClient();
+
+            var nameTable = new NameTable(tableClient);
+            var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var entities = await nameTable.GetPeroidAsync(DaysBeforeNow, DaysAfterNow, cts.Token);
+            DumpTypedEntities(entities, ResourceType.SignalR);
+            DumpTypedEntities(entities, ResourceType.Deployment);
+        }
+    }
+
     [Command(Name = "clear-prod-tbl", FullName = "clear production table", Description = "Command options for production environment")]
     internal class ProdDeleteCommandOptions : ProdCommandOptions
     {
